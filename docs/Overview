@@ -1,0 +1,6 @@
+This is the startup project for student teams, given July, 2016. The
+data access subsystem uses PreparedStatements
+for SQL queries of all kinds. Cache is now accessible
+only in presentation layer. ShoppingCartSubsystem
+is stored in cache till customer logs in. These features
+make it possible to plug in a web interface seamlessly
