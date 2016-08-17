@@ -4,17 +4,13 @@ package business.ordersubsystem;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import business.externalinterfaces.Address;
-import business.externalinterfaces.CreditCard;
-import business.externalinterfaces.CustomerProfile;
-import business.externalinterfaces.Order;
-import business.externalinterfaces.OrderItem;
+import business.externalinterfaces.*;
 import business.util.Convert;
 import middleware.DbConfigProperties;
 import middleware.dataaccess.DataAccessSubsystemFacade;
@@ -24,7 +20,7 @@ import middleware.externalinterfaces.DbClass;
 import middleware.externalinterfaces.DbConfigKey;
 
 
-class DbClassOrder implements DbClass {
+class DbClassOrder implements DbClass, DbClassOrderForTest {
 	enum Type {GET_ORDER_ITEMS, GET_ORDER_IDS, GET_ORDER_DATA, SUBMIT_ORDER, SUBMIT_ORDER_ITEM};
 	
 	private static final Logger LOG = 
@@ -36,12 +32,15 @@ class DbClassOrder implements DbClass {
     
     private String orderItemsQuery = "SELECT * FROM OrderItem WHERE orderid = ?";
     private String orderIdsQuery = "SELECT orderid FROM Ord WHERE custid = ?";
-    private String orderDataQuery = "SELECT orderdate, totalpriceamount FROM Ord WHERE orderid = ?";
+    private String orderDataQuery = "SELECT orderid, orderdate, totalpriceamount FROM Ord WHERE orderid = ?";
     private String submitOrderQuery = "INSERT into Ord "+
         "(custid, shipaddress1, shipcity, shipstate, shipzipcode, billaddress1, billcity, billstate,"+
            "billzipcode, nameoncard,  cardnum,cardtype, expdate, orderdate, totalpriceamount) " +
         "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"; 
-    private String submitOrderItemQuery;
+    
+    //altered by sanjeev on july 7
+    private String submitOrderItemQuery = "INSERT into orderitem "+
+        "(orderitemid, orderid, productid, quantity, totalprice)" + " VALUES(?,?,?,?,?)";
     Object[] orderItemsParams, orderIdsParams, orderDataParams, submitOrderParams, submitOrderItemParams;
     int[] orderItemsTypes, orderIdsTypes, orderDataTypes, submitOrderTypes, submitOrderItemTypes;
     
@@ -77,10 +76,33 @@ class DbClassOrder implements DbClass {
 	 *  Order to the OrderItem table (items are submitted one at a time
 	 *  using submitOrderItem). All this is done within a transaction.
 	 *  Separate methods are provided 
+	 *  implemented by sanjeev on july 7
      */
     void submitOrder(CustomerProfile custProfile, Order order) throws DatabaseException {
-    	LOG.warning("Method submitOrder(CustomerProfile custProfile, Order order) has not beenimplemented");
-    	//implement
+       
+    	//set the value to global objects
+    	this.custProfile = custProfile;
+    	this.order = order;
+    
+    	//database connection
+    	dataAccessSS.establishConnection(this);
+    	dataAccessSS.startTransaction();
+    	
+    	//submit order and get order id
+    	int orderId = submitOrderData();
+    	
+    	//set order id on every order item
+    	List<OrderItem> orderItems = order.getOrderItems();
+    	orderItems.stream().forEach(ord -> ord.setOrderId(orderId));
+        
+    	//submit orderitems to database
+    	for(OrderItem orditem : orderItems)
+    	{
+    		submitOrderItem(orditem);
+    	}
+    	
+        dataAccessSS.commit();
+        dataAccessSS.releaseConnection();
     }
 	    
     /** This is part of the general submitOrder method */
@@ -105,45 +127,48 @@ class DbClassOrder implements DbClass {
     	                  Convert.localDateAsString(order.getOrderDate()),
     	                  order.getTotalPrice()};
     	
+        
     	submitOrderTypes = new int[]{Types.INTEGER, Types.VARCHAR, Types.VARCHAR,Types.VARCHAR,Types.VARCHAR,//shipping
     			Types.VARCHAR, Types.VARCHAR,Types.VARCHAR,Types.VARCHAR,//billing
     			Types.VARCHAR, Types.VARCHAR,Types.VARCHAR,Types.VARCHAR,//cc
     			Types.VARCHAR, Types.DOUBLE};
-		//creation and release of connection handled by submitOrder
-    	//this should be part of a transaction started in submitOrder
 		return dataAccessSS.insert();    
 	}
 	
-	/** This is part of the general submitOrder method */
+	/** This is part of the general submitOrder method  -implementing by sanjeev on july 7*/
 	private void submitOrderItem(OrderItem item) throws DatabaseException {
-        queryType=Type.SUBMIT_ORDER_ITEM;
-        LOG.warning("Method submitOrderItem(OrderItem item) in DbClassOrder has not been implemented.");
-        //implement
-        //submitOrderItemParams = new Object[];
-        //submitOrderItemTypes = new int[];
+   
+
+		queryType=Type.SUBMIT_ORDER_ITEM;
+        submitOrderItemParams = new Object[]{item.getOrderItemId(),item.getOrderId(), item.getProductId(), item.getQuantity(), item.getTotalPrice()};
+        submitOrderItemTypes = new int[]{Types.INTEGER, Types.INTEGER, Types.INTEGER, Types.INTEGER, Types.DOUBLE};
         
-        //creation and release of connection handled by submitOrder
-        //this should be part of a transaction started in submitOrder
-       //dataAccessSS.insert();        
+        dataAccessSS.insert(); 
+               
 	}
    
-    public List<OrderItem> getOrderItems(Integer orderId) throws DatabaseException {
-    	//implement 
-    	LOG.warning("Method getOrderItems(Integer orderId) has not been implmeented");
-        orderItems = new ArrayList<>();
-        return Collections.unmodifiableList(orderItems);        
+	//implemented
+    public List<OrderItem> getOrderItems(int orderId) throws DatabaseException {	
+    	queryType = Type.GET_ORDER_ITEMS;
+    	orderItemsParams = new Object[]{orderId};
+        orderItemsTypes = new int[]{Types.INTEGER};
+        dataAccessSS.atomicRead(this);
+        return Collections.unmodifiableList(orderItems); 
+        
     }
    
     private void populateOrderItems(ResultSet rs) throws DatabaseException {
-    	LOG.warning("Method populateOrderItems(ResultSet) still needs to be implemented");
-       //implement
-    }
-    
-    private void populateOrderIds(ResultSet resultSet) throws DatabaseException {
-        orderIds = new LinkedList<Integer>();
-        try {
-            while(resultSet.next()){
-                orderIds.add(resultSet.getInt("orderid"));
+   	
+    	orderItems = new LinkedList<OrderItem>();
+    	try {
+            while(rs.next()){
+            	OrderItem oItem = new OrderItemImpl("",rs.getInt("quantity"),rs.getDouble("totalprice")); 
+            	oItem.setProductId(rs.getInt("orderitemid"));
+                oItem.setOrderId(rs.getInt("orderid"));
+                oItem.setProductId(rs.getInt("productid"));
+                
+               orderItems.add(oItem);
+ 
             }
         }
         catch(SQLException e){
@@ -151,10 +176,50 @@ class DbClassOrder implements DbClass {
         }
     }
     
+    private void populateOrderIds(ResultSet resultSet) throws DatabaseException {
+        orderIds = new LinkedList<Integer>();
+        try {
+            while(resultSet.next()){    
+                orderIds.add(resultSet.getInt("orderid"));
+            }
+        }
+        catch(SQLException e){
+        	LOG.log(Level.SEVERE, "Database Exception occurred populating Order Ids", e);
+            throw new DatabaseException(e);
+        }
+    }
+    
     private void populateOrderData(ResultSet resultSet) throws DatabaseException { 
-    	//implement
-    	LOG.warning("Method populateOrderData(ResultSet resultSet) still needs to be implemented");
+    	
+    	try {
+   		orderData = new OrderImpl();
+   		
+   		if(resultSet.next())
+   		{
+   			orderData.setOrderId(resultSet.getInt("orderid"));
+   		 	orderData.setTotalPrice(resultSet.getDouble("totalpriceamount"));
+   	       	orderData.setDate(Convert.localDateForString(resultSet.getString("orderdate")));       	
+   		}
+     
+		} catch (SQLException e) {
+			LOG.log(Level.SEVERE, "Database Exception occurred populating Order Ids", e);
+            throw new DatabaseException(e);
+		}
+    	
     }    
+    
+    //used
+    boolean checkStatus(String status)
+    {
+    	if(status == "delivered")
+    	{
+    		return true;
+    	}
+    	else
+    	{
+    		return false;
+    	}
+    }
  
     public void populateEntity(ResultSet resultSet) throws DatabaseException {
     	switch(queryType) {
@@ -229,7 +294,14 @@ class DbClassOrder implements DbClass {
 	        	return null;
 		}
 	}
-   
-     
+
+	/*
+	 * For testing only
+	 * @see business.externalinterfaces.DbClassOrderForTest#getAllOrderIdsForTest(business.externalinterfaces.CustomerProfile)
+	 */
+	@Override
+	public List<Integer> getAllOrderIdsForTest(CustomerProfile cust) throws DatabaseException {
+		return getAllOrderIds(cust);
+	}
     
 }

@@ -17,6 +17,9 @@ public class OrderImpl implements Order {
 	private Address shipAddress;
 	private Address billAddress;
 	private CreditCard creditCard;  
+	
+	//added by sanjeev on july 7
+	private double totalPrice;
 	public OrderImpl() {
 	}
 
@@ -49,7 +52,6 @@ public class OrderImpl implements Order {
 	}
 	
 	public LocalDate getOrderDate() {
-		//note that LocalDates are immutable
 		return date;
 	}
 
@@ -57,44 +59,39 @@ public class OrderImpl implements Order {
 		this.date = date;
 	}
 
-	
-
-	
-
 	@Override
 	public Address getShipAddress() {
-		// TODO Auto-generated method stub
-		return null;
+     return this.shipAddress;
 	}
 
 	@Override
 	public Address getBillAddress() {
-		// TODO Auto-generated method stub
-		return null;
+     return this.billAddress;
 	}
 
 	@Override
 	public CreditCard getPaymentInfo() {
-		// TODO Auto-generated method stub
-		return null;
+		return this.creditCard;
 	}
 
-//	@Override
-//	public void setShipAddress(Address add) {
-//		// TODO Auto-generated method stub
-//		
-//	}
-//
-//	@Override
-//	public void setBillAddress(Address add) {
-//		// TODO Auto-generated method stub
-//		
-//	}
-//
-//	@Override
-//	public void setPaymentInfo(CreditCard cc) {
-//		// TODO Auto-generated method stub
-//		
-//	}
-//	
+	@Override
+	public void setShipAddress(Address add) {
+		this.shipAddress = add;
+	}
+
+	@Override
+	public void setBillAddress(Address add) {
+
+		this.billAddress = add;
+	}
+
+	@Override
+	public void setPaymentInfo(CreditCard cc) {
+		this.creditCard = cc;		
+	}
+
+	@Override
+	public void setTotalPrice(Double price) {
+	this.totalPrice = price;
+	}
 }

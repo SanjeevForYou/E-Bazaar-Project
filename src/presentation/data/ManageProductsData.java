@@ -1,21 +1,38 @@
 package presentation.data;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
+import presentation.util.UtilForUIClasses;
+import business.customersubsystem.CustomerSubsystemFacade;
+import business.exceptions.BackendException;
 import business.externalinterfaces.Catalog;
 import business.externalinterfaces.Product;
+import business.externalinterfaces.ProductSubsystem;
 import business.util.Convert;
 import business.productsubsystem.ProductSubsystemFacade;
 
 public enum ManageProductsData {
 	INSTANCE;
-	
+	private static final Logger LOG = Logger.getLogger(ManageProductsData.class.getName());
 	private CatalogPres defaultCatalog = readDefaultCatalogFromDataSource();
 	private CatalogPres readDefaultCatalogFromDataSource() {
+		
+		//Bandeshor// 7/7/2016
+		ProductSubsystem productSub = new ProductSubsystemFacade();
+		try {
+			return UtilForUIClasses.catalogToCatalogPres(productSub.getCatalogList().get(0));
+		} catch (BackendException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		return DefaultData.CATALOG_LIST_DATA.get(0);
 	}
 	public CatalogPres getDefaultCatalog() {
@@ -35,6 +52,30 @@ public enum ManageProductsData {
 	
 	/** Initializes the productsMap */
 	private ObservableMap<CatalogPres, List<ProductPres>> readProductsFromDataSource() {
+		
+		//Bandeshor// 7/7/2016
+		ProductSubsystem productSub = new ProductSubsystemFacade();
+		try {
+			ObservableMap<CatalogPres,List<ProductPres>> retMap = FXCollections.observableHashMap();
+			List<Catalog> catalogList = productSub.getCatalogList();
+			for(Catalog catalog:catalogList){
+				
+				List<Product> productList=productSub.getProductList(catalog);
+				List<ProductPres> productPresList = productList.stream().map(product -> {
+					ProductPres pres= new ProductPres();
+					pres.setProduct(product);
+					return pres;
+				}).collect(Collectors.toList());
+				
+				CatalogPres catPres = UtilForUIClasses.catalogToCatalogPres(catalog);
+				retMap.put(catPres, productPresList);	
+			}
+			return retMap;
+		} catch (BackendException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		return DefaultData.PRODUCT_LIST_DATA;
 	}
 	
@@ -80,7 +121,22 @@ public enum ManageProductsData {
 
 	/** Initializes the catalogList */
 	private ObservableList<CatalogPres> readCatalogsFromDataSource() {
-		return FXCollections.observableList(DefaultData.CATALOG_LIST_DATA);
+		
+		//Bandeshor// 7/7/2016 
+		ProductSubsystem productSub = new ProductSubsystemFacade();
+		try {
+			List<Catalog> catlogs = productSub.getCatalogList();
+			List<CatalogPres> catlogPres = catlogs.stream()
+					.map(ctg ->{ return UtilForUIClasses.catalogToCatalogPres(ctg);})
+					.collect(Collectors.toList());
+			return FXCollections.observableList(catlogPres);
+		} catch (BackendException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return FXCollections.observableList(DefaultData.CATALOG_LIST_DATA);
+		}
+		
+		
 	}
 
 	/** Delivers the already-populated catalogList to the UI */

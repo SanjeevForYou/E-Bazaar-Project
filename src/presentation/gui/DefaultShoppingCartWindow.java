@@ -83,7 +83,7 @@ public interface DefaultShoppingCartWindow extends MessageableWindow, Modifiable
 		   }   
 			   
 		   TableUtil.refreshTable(getTable(), BrowseSelectData.INSTANCE.getShoppingCartSynchronizer());
-		   BrowseSelectData.INSTANCE.updateShoppingCart(); //changes
+		   BrowseSelectData.INSTANCE.updateShoppingCart();
 	     }); 
 
         TableColumn<CartItemPres, String> unitPriceCol 

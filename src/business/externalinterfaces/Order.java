@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 
 public interface Order {
+	//changes
     public List<OrderItem> getOrderItems();    
 	public LocalDate getOrderDate();		
 	public int getOrderId();		
@@ -19,11 +20,12 @@ public interface Order {
     public CreditCard getPaymentInfo();
 	
 	//implement
-	
-//	public void setDate(LocalDate date);
-//	public void setShipAddress(Address add);
-//	public void setBillAddress(Address add);
-//	public void setPaymentInfo(CreditCard cc);
+	//uncommented by sanjeev on july 7
+	public void setDate(LocalDate date);
+	public void setShipAddress(Address add);
+	public void setBillAddress(Address add);
+	public void setPaymentInfo(CreditCard cc);
+	public void setTotalPrice(Double price);
 	
 	
 }

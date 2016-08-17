@@ -58,6 +58,13 @@ public class ShippingBillingWindow extends Stage implements MessageableWindow {
 		return saveBillAddr.isSelected();
 	}
 	public Address getShippingAddress() {
+		
+		System.out.println(shipStreetField.getText()+","+
+				           shipCityField.getText()+","+
+				           shipStateField.getText()+","+
+				           shipZipField.getText());
+		
+		
 		return CheckoutData.INSTANCE.createAddress(shipStreetField.getText(),
 				           shipCityField.getText(),
 				           shipStateField.getText(),
@@ -65,6 +72,10 @@ public class ShippingBillingWindow extends Stage implements MessageableWindow {
 	}
 	/** Returns the user-filled Billing Address data */
 	public Address getBillingAddress() {
+		System.out.println(billStreetField.getText()+","+
+				billCityField.getText()+","+
+				billStateField.getText()+","+
+				billZipField.getText());
 		return CheckoutData.INSTANCE.createAddress(billStreetField.getText(),
 				           billCityField.getText(),
 				           billStateField.getText(),
@@ -267,10 +278,7 @@ public class ShippingBillingWindow extends Stage implements MessageableWindow {
     			  CheckoutData.INSTANCE.getShipAddressSynchronizer());
   		shipAddressWindow = 
   			new SelectAddress(this, ship, 
-  				cust -> {
-  			        this.setShippingAddress(cust.fullNameProperty().get(), cust.streetProperty().get(), 
-  					cust.cityProperty().get(), cust.stateProperty().get(), cust.zipProperty().get());
-  				});
+  				  CheckoutUIControl.INSTANCE.getSetShippingInSelect());
   		
   		shipAddressWindow.setData(CheckoutData.INSTANCE.getCustomerShipAddresses());
   		shipAddressWindow.setX(100);
@@ -281,11 +289,8 @@ public class ShippingBillingWindow extends Stage implements MessageableWindow {
   		   = new CheckoutData.ShipBill(false, "Billing Addresses",
   				 CheckoutData.INSTANCE.getBillAddressSynchronizer());
   		billAddressWindow  
-  	  		= new SelectAddress(this, bill, 
-  	  				cust -> {
-  	  			        this.setBillingAddress(cust.fullNameProperty().get(), cust.streetProperty().get(), 
-  	  					cust.cityProperty().get(), cust.stateProperty().get(), cust.zipProperty().get());
-  	  				});
+  	  		= new SelectAddress(this, bill,  
+  	  			 CheckoutUIControl.INSTANCE.getSetBillingInSelect());
   	  		
   		billAddressWindow.setData(CheckoutData.INSTANCE.getCustomerBillAddresses());
   		billAddressWindow.setX(120);

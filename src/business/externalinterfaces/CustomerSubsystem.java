@@ -84,12 +84,12 @@ public interface CustomerSubsystem {
      * to read current user's order history (not used during login process)
      */
     public List<Order> getOrderHistory();  
-//    
-//    
-//    
-//    
-//    
-//    
+    
+    
+    
+    
+    
+    
     /** 
      *  Stores address as shipping address in this customer's shopping cart.
      *  Called during checkout use case. 
@@ -132,5 +132,9 @@ public interface CustomerSubsystem {
     //TESTING
     public DbClassAddressForTest getGenericDbClassAddress(); 
     public CustomerProfile getGenericCustomerProfile();
+    
+    //Bandeshor 7/9/2016
+    public DbClassCustomerProfileForTest getGenericDbCustomerProfile();//test DbClassCustomerProfile
+    public List<Address> getAllShippingAddressForTest(CustomerProfile customerProfile) throws BackendException;
 //    
 }

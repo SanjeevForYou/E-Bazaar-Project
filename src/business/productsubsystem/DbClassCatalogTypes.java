@@ -2,8 +2,13 @@ package business.productsubsystem;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import business.exceptions.BackendException;
+import business.externalinterfaces.Catalog;
+import business.externalinterfaces.DbClassCatalogTypesForTest;
 import middleware.DbConfigProperties;
 import middleware.dataaccess.DataAccessSubsystemFacade;
 import middleware.exceptions.DatabaseException;
@@ -17,7 +22,7 @@ import middleware.externalinterfaces.DbConfigKey;
  * managing one particular catalog (which is managed
  * by DbClassCatalog)
  */
-public class DbClassCatalogTypes implements DbClass {
+public class DbClassCatalogTypes implements DbClass, DbClassCatalogTypesForTest {
 	enum Type {GET_TYPES};
 	@SuppressWarnings("unused")
 	private static final Logger LOG = 
@@ -82,6 +87,7 @@ public class DbClassCatalogTypes implements DbClass {
             }
         }
         catch(SQLException e){
+        	LOG.log(Level.SEVERE, "Database Exception occurred populating Entities", e);
             throw new DatabaseException(e);
         }      
     }
@@ -89,5 +95,17 @@ public class DbClassCatalogTypes implements DbClass {
     public String getDbUrl() {
     	DbConfigProperties props = new DbConfigProperties();	
     	return props.getProperty(DbConfigKey.PRODUCT_DB_URL.getVal());
-    } 
+    }
+
+	@Override
+	public List<Catalog> getCatalogList() {
+		DbClassCatalogTypes dbClass = new DbClassCatalogTypes();
+		try {
+			return dbClass.getCatalogTypes().getCatalogs();
+		} catch (DatabaseException e) {
+			LOG.log(Level.SEVERE, "Database Exception getting Catalog List", e);
+			e.printStackTrace();
+		}
+		return null;
+	} 
 }

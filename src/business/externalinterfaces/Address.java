@@ -12,4 +12,7 @@ public interface Address {
     public void setZip(String s);
     public boolean isShippingAddress();
 	public boolean isBillingAddress();   
+	
+	public void isShippingAddress(boolean b);
+	public void isBillingAddress(boolean b);
 }

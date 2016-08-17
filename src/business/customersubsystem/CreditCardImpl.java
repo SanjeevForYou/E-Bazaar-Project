@@ -4,12 +4,12 @@ package business.customersubsystem;
 import business.externalinterfaces.CreditCard;
 
 
-class CreditCardImpl implements CreditCard {
+public class CreditCardImpl implements CreditCard {
     String nameOnCard;
     String expirationDate;
     String cardNum;
     String cardType;
-    CreditCardImpl(String nameOnCard,String expirationDate,
+    public CreditCardImpl(String nameOnCard,String expirationDate,
                String cardNum, String cardType) {
         this.nameOnCard=nameOnCard;
         this.expirationDate=expirationDate;

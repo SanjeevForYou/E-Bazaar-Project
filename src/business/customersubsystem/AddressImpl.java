@@ -2,7 +2,7 @@ package business.customersubsystem;
 
 import business.externalinterfaces.Address;
 
-class AddressImpl implements Address {
+public class AddressImpl implements Address {
 	private String street;
 	private String city;
 	private String state;
@@ -10,7 +10,7 @@ class AddressImpl implements Address {
 	private boolean isShippingAddress = false;
 	private boolean isBillingAddress = false;
 	
-	AddressImpl(String str, String c, String state, String zip, 
+	public AddressImpl(String str, String c, String state, String zip, 
 			boolean isShip, boolean isBill) {
 		street=str;
 		city=c;
@@ -58,6 +58,20 @@ class AddressImpl implements Address {
 
 	public void setZip(String zip) {
 		this.zip = zip;
+	}
+	
+	
+	
+	
+	//patch 3
+	@Override
+	public void isShippingAddress(boolean b) {
+		isShippingAddress = b;
+		
+	}
+	@Override
+	public void isBillingAddress(boolean b) {
+		isBillingAddress = b;
 	}
 	
 }

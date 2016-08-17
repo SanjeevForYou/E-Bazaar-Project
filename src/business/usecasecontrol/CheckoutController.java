@@ -1,19 +1,19 @@
 package business.usecasecontrol;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
-import business.BusinessConstants;
+import business.customersubsystem.RulesPayment;
 import business.exceptions.BackendException;
 import business.exceptions.BusinessException;
 import business.exceptions.RuleException;
 import business.externalinterfaces.Address;
 import business.externalinterfaces.CreditCard;
-import business.externalinterfaces.CustomerProfile;
 import business.externalinterfaces.CustomerSubsystem;
+import business.externalinterfaces.Rules;
 import business.externalinterfaces.ShoppingCartSubsystem;
-import presentation.data.SessionCache;
+import business.shoppingcartsubsystem.RulesFinalOrder;
+import business.shoppingcartsubsystem.RulesShoppingCart;
 
 public class CheckoutController  {
 		
@@ -22,12 +22,15 @@ public class CheckoutController  {
 	
 	
 	public void runShoppingCartRules(ShoppingCartSubsystem shopCart) throws RuleException, BusinessException {
-		//implement
-		
+		//implemented//Bandeshor 7/8/2016
+		Rules shoppingRuleObject = new RulesShoppingCart(shopCart.getLiveCart());
+		shoppingRuleObject.runRules();
 	}
 	
 	public void runPaymentRules(Address addr, CreditCard cc) throws RuleException, BusinessException {
-		//implement
+		//implemented//Bandeshor 7/8/2016
+		Rules paymentRuleObject = new RulesPayment(addr, cc);
+		paymentRuleObject.runRules();
 	}
 	
 	public Address runAddressRules(CustomerSubsystem cust, Address addr) throws RuleException, BusinessException {
@@ -44,14 +47,16 @@ public class CheckoutController  {
 	
 	/** Asks the ShoppingCart Subsystem to run final order rules */
 	public void runFinalOrderRules(ShoppingCartSubsystem scss) throws RuleException, BusinessException {
-		//implement
+		//implemented//Bandeshor 7/8/2016
+		new RulesFinalOrder(scss.getLiveCart()).runRules();
 	}
 	
 	/** Asks Customer Subsystem to check credit card against 
 	 *  Credit Verification System 
 	 */
 	public void verifyCreditCard(CustomerSubsystem cust) throws BusinessException {
-		//implement
+		//implemented//Bandeshor 7/8/2016
+		cust.checkCreditCard();
 	}
 	
 	public void saveNewAddress(CustomerSubsystem cust, Address addr) throws BackendException {		
@@ -59,8 +64,10 @@ public class CheckoutController  {
 	}
 	
 	/** Asks Customer Subsystem to submit final order */
-	public void submitFinalOrder() throws BackendException {
-		//implement
+	public void submitFinalOrder(CustomerSubsystem cust) throws BackendException {
+		//implemented//Bandeshor 7/8/2016
+		cust.submitOrder();
+		cust.refreshAfterSubmit();
 	}
 
 

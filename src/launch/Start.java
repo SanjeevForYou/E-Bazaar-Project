@@ -2,6 +2,7 @@ package launch;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Menu;
@@ -50,13 +51,13 @@ public class Start extends Application {
 		topContainer.getChildren().add(messageBarBox);
 
 		//place into scene and into stage
-		primaryStage.setScene(new Scene(topContainer, 500, 200));
+		primaryStage.setScene(new Scene(topContainer, 500, 275));
 		primaryStage.show();
 	}
 	
 	private HBox createLabelBox() {
 		Text label = new Text("E-Bazaar");
-		label.setFont(Font.font("Comic Sans MS", FontWeight.BOLD, 60));
+		label.setFont(Font.font("Tahoma", FontWeight.BOLD, 60));
 		label.setFill(Color.DARKRED);
 		HBox labelBox = new HBox(10);
 		labelBox.setAlignment(Pos.CENTER);
@@ -66,6 +67,7 @@ public class Start extends Application {
 	
 	private HBox createMessageBarBox() {
 		HBox box = new HBox(10);
+		box.setPadding(new Insets(150, 12, 30, 12));
 		box.setAlignment(Pos.BASELINE_LEFT);
 		box.getChildren().add(messageBar);
 		return box;	

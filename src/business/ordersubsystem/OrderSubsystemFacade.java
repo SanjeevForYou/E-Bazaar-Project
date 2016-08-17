@@ -1,17 +1,17 @@
 package business.ordersubsystem;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import middleware.exceptions.DatabaseException;
 import business.exceptions.BackendException;
-import business.externalinterfaces.CustomerProfile;
-import business.externalinterfaces.Order;
-import business.externalinterfaces.OrderItem;
-import business.externalinterfaces.OrderSubsystem;
-import business.externalinterfaces.ShoppingCart;
+import business.externalinterfaces.*;
+import business.productsubsystem.ProductSubsystemFacade;
+import business.util.*;
 
 public class OrderSubsystemFacade implements OrderSubsystem {
 	private static final Logger LOG = 
@@ -31,56 +31,84 @@ public class OrderSubsystemFacade implements OrderSubsystem {
 	 *  into the order.
 	 */
     public List<Order> getOrderHistory() throws BackendException {
-    	//implement
-    	 List<Order> orders =null;
-    	try {
-    		//july 6 sanjeev
-        	List<Integer> orderIds = getAllOrderIds();     	
-        	 for(Integer ordid : orderIds)
-         	{
-         		orders.add(getOrderByOrderID(ordid));
-         	}
-        	 
-        	 for(Order order : orders)
-        	 {
-        		 order.setOrderItems(getOrderItems(order.getOrderId()));
-        	 }
-           
-    	} catch (DatabaseException e) {
- 		   throw new BackendException(e);
- 		}
-    	
-       
-	
-       LOG.warning("Method getOrderHistory() attempted to implement");
-    	return orders;
-    }
+
+		try {
+			List<Order> orders = new ArrayList<Order>();
+			List<Integer> orderIds = getAllOrderIds();
+			for (Integer ordid : orderIds) {
+				try {
+					orders.add(getOrderByOrderID(ordid.intValue()));
+				} catch (DatabaseException e) {
+					LOG.log(Level.SEVERE, "Exception occured when geting order history", e);
+				}
+			}
+
+			orders.stream().forEach(ord -> {
+				try {
+					ord.setOrderItems(getOrderItems(ord.getOrderId()));
+				} catch (DatabaseException e) {
+					LOG.log(Level.SEVERE, "Exception occured when geting order history", e);
+				}
+			});
+			return orders;
+
+		} catch (DatabaseException e) {
+			LOG.log(Level.SEVERE, "Exception occured when geting order history", e);
+			throw new BackendException(e);
+		}
+
+	}
     
-    //added sanjeev july 6
-    Order getOrderByOrderID(Integer orderID) throws DatabaseException
+    Order getOrderByOrderID(int orderID) throws DatabaseException
     {
-    	 DbClassOrder dbClass = new DbClassOrder();
-    	return (Order)dbClass.getOrderData(orderID);
+    	DbClassOrder dbClass = new DbClassOrder();
+    	return dbClass.getOrderData(orderID);
     }
     
     public void submitOrder(ShoppingCart cart) throws BackendException {
-    	//implement
-    	LOG.warning("The method submitOrder(ShoppingCart cart) in OrderSubsystemFacade has not been implemented");
+
+    	List<CartItem> cartItems = cart.getCartItems();
+    	List<OrderItem> orderItems = cartItems.stream().map(cartitem -> Convert.createOrderItemFromCartItem(cartitem)).collect(Collectors.toList());
+    	
+    	Order order = new OrderImpl();
+    	
+    	order.setDate(LocalDate.now());
+    	order.setOrderItems(orderItems);
+    	
+    	Address shippingAddress = cart.getShippingAddress();
+    	Address billingAddress = cart.getBillingAddress();
+    	CreditCard creditCard = cart.getPaymentInfo();
+    	
+    	order.setShipAddress(shippingAddress);
+    	order.setBillAddress(billingAddress);
+    	order.setPaymentInfo(creditCard);
+    	
+    	DbClassOrder dbClassOrder = new DbClassOrder();
+    	try {
+    		dbClassOrder.submitOrder(custProfile, order);
+		} catch (DatabaseException e) {
+			LOG.log(Level.SEVERE, "Backend exception occured on ordersubsystem order submission", e);
+			throw new BackendException(e);
+		}	 	
     }
 	
 	/** Used whenever an order item needs to be created from outside the order subsystem */
     public static OrderItem createOrderItem(
-    		Integer prodId, Integer orderId, String quantityReq, String totalPrice) {
-    	//implement
-        LOG.warning("Method createOrderItem(prodid, orderid, quantity, totalprice) still needs to be implemented");
-    	return null;
+    		Integer prodId, Integer orderId, String quantityReq, String totalPrice) {   
+    	OrderItem orderitem = new OrderItemImpl("", Integer.parseInt(quantityReq),Double.parseDouble(totalPrice));
+    	orderitem.setProductId(prodId);
+    	orderitem.setOrderId(orderId);
+    	return orderitem;
     }
     
     /** to create an Order object from outside the subsystem */
     public static Order createOrder(Integer orderId, String orderDate, String totalPrice) {
-    	//implement
-        LOG.warning("Method  createOrder(Integer orderId, String orderDate, String totalPrice) still needs to be implemented");
-    	return null;
+
+    	Order order = new OrderImpl();
+    	order.setOrderId(orderId);
+    	order.setDate(Convert.localDateForString(orderDate));
+    	order.setTotalPrice(Double.parseDouble(totalPrice));
+    	return order;
     }
     
     ///////////// Methods internal to the Order Subsystem -- NOT public
@@ -91,14 +119,29 @@ public class OrderSubsystemFacade implements OrderSubsystem {
     }
     
     /** Part of getOrderHistory */
-    List<OrderItem> getOrderItems(Integer orderId) throws DatabaseException {
+    List<OrderItem> getOrderItems(int orderId) throws DatabaseException {
         DbClassOrder dbClass = new DbClassOrder();
-        return dbClass.getOrderItems(orderId);
+        List<OrderItem> ordItems = dbClass.getOrderItems(orderId);
+        
+        ProductSubsystemFacade product = new ProductSubsystemFacade();
+        ordItems.stream().forEach(item ->{
+        	try{item.setProductName(product.getProductFromId(item.getProductId()).getProductName());
+        	}catch(BackendException e){
+        		LOG.log(Level.SEVERE, "Backend exception occured on ordersubsystem", e);
+        	} 	
+        });
+        return ordItems;
     }
     
     /** Uses cust id to locate top-level order data for customer -- part of getOrderHistory */
     OrderImpl getOrderData(Integer custId) throws DatabaseException {
     	DbClassOrder dbClass = new DbClassOrder();
     	return dbClass.getOrderData(custId);
+    }
+    
+    //
+    public DbClassOrderForTest getGenericDbClassOrder()
+    {
+    	return new DbClassOrder();
     }
 }

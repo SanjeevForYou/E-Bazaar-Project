@@ -36,10 +36,20 @@ public class ManageProductsController   {
     	return pss.saveNewCatalog(catName);
     }
     
-    
-    public void deleteProduct() {
-    	//implement
+    public int saveNewProduct(Product product, Catalog catalog) throws BackendException {
+    	ProductSubsystem pss = new ProductSubsystemFacade(); 
+    	return pss.saveNewProduct(product, catalog);
+    }
+       
+    public void deleteProduct(Product product) throws BackendException {
+    	//implemented
+    	ProductSubsystem pss = new ProductSubsystemFacade();
+    	pss.deleteProduct(product);
     }
     
-    
+    public void deleteCatalog(Catalog catalog) throws BackendException {
+    	//implemented
+    	ProductSubsystem pss = new ProductSubsystemFacade();
+    	pss.deleteCatalog(catalog);
+    }
 }

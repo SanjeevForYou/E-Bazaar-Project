@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 
 import business.exceptions.BackendException;
 import business.externalinterfaces.*;
+import business.productsubsystem.ProductSubsystemFacade;
 import business.shoppingcartsubsystem.ShoppingCartSubsystemFacade;
 import business.usecasecontrol.BrowseAndSelectController;
 import javafx.collections.FXCollections;
@@ -120,9 +121,22 @@ public enum BrowseSelectData  {
 	
 	/** Returns number of units of this product available according to the database */
 	public int quantityAvailable(Product product) {
-		LOG.warning("BrowseSelectData method quantityAvailable has not been implemented");
+		//LOG.warning("BrowseSelectData method quantityAvailable has not been implemented");
 		//implement
-		return DefaultData.DEFAULT_QUANTITY_AVAILABLE;
+		//return DefaultData.DEFAULT_QUANTITY_AVAILABLE;
+		
+		//Bandeshor//7/7/2016
+		//try to get the product again maybe to see if the quantity has changed
+		ProductSubsystem productSubSystem = new ProductSubsystemFacade();
+		try {
+			//setting the new product in the old product
+			product = productSubSystem.getProductFromId(product.getProductId());
+		} catch (BackendException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			LOG.warning("failed to get the Updated Product, return the number available quantity from passed product");
+		}
+		return product.getQuantityAvail();
 		
 	}
 	

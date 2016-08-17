@@ -27,6 +27,12 @@ public class SessionCache {
 	public static final String SHOP_CART = "Shopping Cart";
     public static final String LOGGED_IN = "LoggedIn";
     
+    
+    //Team//7/12/2016
+    public static final boolean RETRIVED_SHOPPING_CART = false;;
+    
+    
+    
     //public interface
     public static SessionCache getInstance() {
         return instance;   

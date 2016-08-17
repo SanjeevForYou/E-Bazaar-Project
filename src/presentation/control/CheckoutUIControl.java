@@ -1,14 +1,19 @@
 package presentation.control;
 
+import java.util.function.Consumer;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.text.Text;
+import launch.Start;
 import presentation.data.BrowseSelectData;
 import presentation.data.CheckoutData;
+import presentation.data.CustomerPres;
 import presentation.data.ErrorMessages;
 import presentation.data.SessionCache;
 import presentation.gui.CatalogListWindow;
@@ -55,6 +60,7 @@ public enum CheckoutUIControl {
 			EventHandler<ActionEvent>, Callback {
 		CheckoutData data = CheckoutData.INSTANCE;
 		public void doUpdate() {
+			shippingBillingWindow = new ShippingBillingWindow();
 			CustomerProfile custProfile = data.getCustomerProfile(CacheReader.readCustomer());
 			Address defaultShipAddress = data.getDefaultShippingData();
 			Address defaultBillAddress = data.getDefaultBillingData();
@@ -75,22 +81,32 @@ public enum CheckoutUIControl {
 		public void handle(ActionEvent evt) {
 			ShoppingCartWindow.INSTANCE.clearMessages();
 			ShoppingCartWindow.INSTANCE.setTableAccessByRow();
-			ShoppingCartWindow.INSTANCE.hide();
+			
 			
 			boolean rulesOk = true;
+			
+			//Bandeshor //7/8/2016
 			/* check that cart is not empty before going to next screen */	
 			
-//			try {
-//				usecaseControl.runShoppingCartRules();
-//			} catch (RuleException e) {
-//				//handle
-//			} catch (BusinessException e) {
-//				//handle
-//			}
+			try {
+				controller.runShoppingCartRules(CacheReader.readCustomer().getShoppingCart());
+			} catch (RuleException e) {
+				//handle
+				getMessageBar().setText(e.getLocalizedMessage());
+				e.printStackTrace();
+				rulesOk= false;
+			} catch (BusinessException e) {
+				//handle
+				getMessageBar().setText(e.getLocalizedMessage());
+				e.printStackTrace();
+				rulesOk = false;
+			}
 	
+			
 			if (rulesOk) {
+				ShoppingCartWindow.INSTANCE.hide();
 				boolean isLoggedIn = CacheReader.readLoggedIn();
-				shippingBillingWindow = new ShippingBillingWindow();
+				//do no create instace of ShoppingBillWindow here
 				if (!isLoggedIn) {
 					LoginUIControl loginControl 
 					  = new LoginUIControl(shippingBillingWindow, ShoppingCartWindow.INSTANCE, this);
@@ -137,38 +153,45 @@ public enum CheckoutUIControl {
 			Address cleansedShipAddress = null;
 			Address cleansedBillAddress = null;
 			CustomerSubsystem cust = CacheReader.readCustomer(); 
-			if (shippingBillingWindow.getSaveShipAddr()) {
+			//Bandeshor //7/12/2016
+			//check even if not saving the Addresses,but if ticked save, save it
 				try {				
-					cleansedShipAddress 
+					Address tempAddr 
 					   = controller.runAddressRules(cust, shippingBillingWindow
 							.getShippingAddress());
+					if(shippingBillingWindow.getSaveShipAddr())
+						cleansedShipAddress = tempAddr;
 				} catch (RuleException e) {
+					LOG.log(Level.FINER, "Rule Exception: Shipping address error", e);
 					rulesOk = false;
 					shippingBillingWindow
 							.displayError("Shipping address error: "
 									+ e.getMessage());
 				} catch (BusinessException e) {
+					LOG.log(Level.SEVERE, "Business Exception getting Save Shipping Address", e);
 					rulesOk = false;
 					shippingBillingWindow.displayError(
 							ErrorMessages.GENERAL_ERR_MSG + ": Message: " + e.getMessage());
 				}
-			}
+			
 			if (rulesOk) {
-				if (shippingBillingWindow.getSaveBillAddr()) {
 					try {
-						cleansedBillAddress = controller.runAddressRules(cust, shippingBillingWindow
+						Address tempAddr= controller.runAddressRules(cust, shippingBillingWindow
 								.getBillingAddress());
+						if(shippingBillingWindow.getSaveBillAddr())
+							cleansedBillAddress = tempAddr;
 					} catch (RuleException e) {
+						LOG.log(Level.FINER, "Rule Exception: Billing address error", e);
 						rulesOk = false;
 						shippingBillingWindow
 								.displayError("Billing address error: "
 										+ e.getMessage());
 					} catch (BusinessException e) {
+						LOG.log(Level.SEVERE, "Business Exception getting Save Billing Address", e);
 						rulesOk = false;
 						shippingBillingWindow.displayError(
 								ErrorMessages.GENERAL_ERR_MSG + ": Message: " + e.getMessage());
 					}
-				}
 			}
 			if (rulesOk) {
 				
@@ -177,6 +200,7 @@ public enum CheckoutUIControl {
 					try {
 						controller.saveNewAddress(cust, cleansedShipAddress);
 					} catch(BackendException e) {
+						LOG.log(Level.SEVERE, "Backend Exception saving New Shipping Address", e);
 						shippingBillingWindow.displayError("New shipping address not saved. Message: " 
 							+ e.getMessage());
 					}
@@ -185,6 +209,7 @@ public enum CheckoutUIControl {
 					try {
 						controller.saveNewAddress(cust, cleansedBillAddress);
 					} catch(BackendException e) {
+						LOG.log(Level.SEVERE, "Backend Exception saving New Billing Address", e);
 						shippingBillingWindow.displayError("New billing address not saved. Message: " 
 							+ e.getMessage());
 					}
@@ -264,8 +289,10 @@ public enum CheckoutUIControl {
 				termsWindow = new TermsWindow();
 				termsWindow.show();
 			} catch(RuleException e) {
+				LOG.log(Level.FINER, "Rule Exception showing Terms Window", e);
 				paymentWindow.displayError(e.getMessage());
 			} catch(BusinessException e) {
+				LOG.log(Level.SEVERE, "Business Exception getting Billing Address", e);
 				paymentWindow.displayError(ErrorMessages.DATABASE_ERROR);
 			}
 		}
@@ -305,17 +332,40 @@ public enum CheckoutUIControl {
 	}
 
 	// handlers for FinalOrderWindow
-	private class SubmitHandler implements EventHandler<ActionEvent> {
-		@Override
-		public void handle(ActionEvent evt) {
-			orderCompleteWindow = new OrderCompleteWindow();
-			orderCompleteWindow.show();
-			finalOrderWindow.clearMessages();
-			finalOrderWindow.hide();
+		private class SubmitHandler implements EventHandler<ActionEvent> {
+			@Override
+			public void handle(ActionEvent evt) {
+				//changes
+				boolean isRuleOk = false;
+					try {
+						controller.runFinalOrderRules(CacheReader.readCustomer().getShoppingCart());
+						isRuleOk =true;
+					} catch (RuleException e) {
+						LOG.log(Level.FINER, "Rule Exception when submitting final order", e);
+						finalOrderWindow.displayError(e.getMessage());
+					}catch (BusinessException e) {
+						LOG.log(Level.SEVERE, "Rules based Exception while submitting  order", e);
+						finalOrderWindow.displayError(e.getMessage());
+				}
+					
+					if(isRuleOk)
+					{
+						try {
+							controller.submitFinalOrder(CacheReader.readCustomer());
+							orderCompleteWindow = new OrderCompleteWindow();
+							orderCompleteWindow.show();
+							finalOrderWindow.clearMessages();
+							finalOrderWindow.hide();
+						} catch (BackendException e) {
+							LOG.log(Level.SEVERE, "Backend Exception while submitting  order", e);
+							finalOrderWindow.displayError("Order submission failed!!");
+						}
+					}
+			
+			}
+
 		}
-
-	}
-
+		
 	public SubmitHandler getSubmitHandler() {
 		return new SubmitHandler();
 	}
@@ -349,14 +399,60 @@ public enum CheckoutUIControl {
 
 	private class ContinueFromOrderCompleteHandler implements
 			EventHandler<ActionEvent> {
+		CatalogListWindow catWindow;
 		@Override
 		public void handle(ActionEvent evt) {
-			CatalogListWindow.getInstance().show();
+			try{
+				catWindow = CatalogListWindow.getInstance(ShoppingCartWindow.INSTANCE.getPrimaryStage(),FXCollections.observableList(BrowseSelectData.INSTANCE.getCatalogList()));
+			}
+			catch(Exception e){
+				e.printStackTrace();
+			}
+			if(catWindow != null)
+				{
+				catWindow.show();
+				}
 			orderCompleteWindow.hide();
 		}
 	}
 
 	public ContinueFromOrderCompleteHandler getContinueFromOrderCompleteHandler() {
 		return new ContinueFromOrderCompleteHandler();
+	}
+	
+	
+	//Patch3
+	public class SetShippingInSelect implements Consumer<CustomerPres> {
+
+		@Override
+		public void accept(CustomerPres cust) {
+			shippingBillingWindow.setShippingAddress(
+					cust.fullNameProperty().get(), 
+					cust.streetProperty().get(), 
+					cust.cityProperty().get(), 
+					cust.stateProperty().get(), 
+					cust.zipProperty().get());
+			
+		}	
+	}
+	public SetShippingInSelect getSetShippingInSelect() {
+		return new SetShippingInSelect();
+	}
+	
+	public class SetBillingInSelect implements Consumer<CustomerPres> {
+		@Override
+		public void accept(CustomerPres cust) {
+			shippingBillingWindow.setBillingAddress(
+					cust.fullNameProperty().get(), 
+					cust.streetProperty().get(), 
+					cust.cityProperty().get(), 
+					cust.stateProperty().get(), 
+					cust.zipProperty().get());
+			
+		}	
+	}
+	
+	public SetBillingInSelect getSetBillingInSelect() {
+		return new SetBillingInSelect();
 	}
 }

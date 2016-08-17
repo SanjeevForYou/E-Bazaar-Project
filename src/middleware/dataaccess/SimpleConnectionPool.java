@@ -160,7 +160,7 @@ enum SimpleConnectionPool {
 		try {
 			if ((con != null) && (!con.isClosed())
 					&& (numFreeConnections(URI) < this.maxconn)) {
-				LOG.info("Returning a connection to pool");
+				//LOG.info("Returning a connection to pool");
 				con.setAutoCommit(true);
 				addConnection(URI, con);
 			}

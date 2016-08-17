@@ -5,6 +5,8 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.logging.Logger;
 
+import business.externalinterfaces.CustomerProfile;
+import business.externalinterfaces.DbClassCustomerProfileForTest;
 import middleware.DbConfigProperties;
 import middleware.dataaccess.DataAccessSubsystemFacade;
 import middleware.exceptions.DatabaseException;
@@ -13,7 +15,7 @@ import middleware.externalinterfaces.DbClass;
 import middleware.externalinterfaces.DbConfigKey;
 
 
-class DbClassCustomerProfile implements DbClass {
+class DbClassCustomerProfile implements DbClass,DbClassCustomerProfileForTest {
 	enum Type {READ};
 	@SuppressWarnings("unused")
 	private static final Logger LOG = 
@@ -86,5 +88,14 @@ class DbClassCustomerProfile implements DbClass {
 	    	default :
 	    		return null;
 		}
+	}
+
+	//Bandeshor 7/9/2016
+	/////Interface for Test//////
+	
+	@Override
+	public String[] getUserInfoForTest(CustomerProfile customerProfile) throws DatabaseException {
+		CustomerProfile newCs=readCustomerProfile(customerProfile.getCustId());
+		return new String[]{newCs.getCustId()+"",newCs.getFirstName(),newCs.getLastName()};
 	}
 }

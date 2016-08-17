@@ -1,6 +1,10 @@
 package middleware.dataaccess;
 
 import java.sql.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+//import business.productsubsystem.DbClassProduct;
 import middleware.exceptions.DatabaseException;
 
 /**
@@ -12,7 +16,8 @@ import middleware.exceptions.DatabaseException;
  *   the constants in the class java.sql.Types.
  */
 public class StatementPrep {
-	
+	private static final Logger LOG = Logger.getLogger(StatementPrep.class
+			.getPackage().getName());
 	public static PreparedStatement createInsertPreparedStatement(Connection con, String query, Object[] params,
 			int[] paramTypes) throws DatabaseException {
 		PreparedStatement stmt = null;
@@ -21,6 +26,7 @@ public class StatementPrep {
 			setValues(stmt, params, paramTypes);
 			return stmt;
 		} catch (SQLException e) {
+			LOG.log(Level.SEVERE, "Database Exception occurred creating Insert Prepared Statement", e);
 			throw new DatabaseException(e);
 		}
 	}
@@ -33,6 +39,7 @@ public class StatementPrep {
 			setValues(stmt, params, paramTypes);
 			return stmt;
 		} catch (SQLException e) {
+			LOG.log(Level.SEVERE, "Database Exception occurred creating General Prepared Statement", e);
 			throw new DatabaseException(e);
 		}
 		

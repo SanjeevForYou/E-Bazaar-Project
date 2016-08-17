@@ -35,7 +35,7 @@ public class OrderItemPres {
 	}
 	public SimpleStringProperty unitPriceProperty() {
 		return new SimpleStringProperty(
-				(new Integer(orderItem.getQuantity())).toString());
+				String.format("%.2f",(new Double(orderItem.getUnitPrice()))));
 	}
 	
 	public SimpleStringProperty totalPriceProperty() {

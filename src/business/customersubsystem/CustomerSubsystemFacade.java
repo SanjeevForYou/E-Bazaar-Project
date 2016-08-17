@@ -2,7 +2,7 @@ package business.customersubsystem;
 
 import java.util.List;
 import java.util.stream.Collectors;
-
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import middleware.creditverifcation.CreditVerificationFacade;
@@ -10,6 +10,8 @@ import middleware.exceptions.DatabaseException;
 import middleware.exceptions.MiddlewareException;
 import middleware.externalinterfaces.CreditVerification;
 import middleware.externalinterfaces.CreditVerificationProfile;
+import presentation.data.BrowseSelectData;
+import presentation.util.CacheReader;
 import business.exceptions.BackendException;
 import business.exceptions.BusinessException;
 import business.exceptions.RuleException;
@@ -19,6 +21,7 @@ import business.externalinterfaces.CreditCard;
 import business.externalinterfaces.CustomerProfile;
 import business.externalinterfaces.CustomerSubsystem;
 import business.externalinterfaces.DbClassAddressForTest;
+import business.externalinterfaces.DbClassCustomerProfileForTest;
 import business.externalinterfaces.Order;
 import business.externalinterfaces.OrderSubsystem;
 import business.externalinterfaces.Rules;
@@ -29,8 +32,7 @@ import business.shoppingcartsubsystem.ShoppingCartSubsystemFacade;
 import business.util.DataUtil;
 
 public class CustomerSubsystemFacade implements CustomerSubsystem {
-	private static final Logger LOG =
-		Logger.getLogger(CustomerSubsystemFacade.class.getName());
+	private static final Logger LOG = Logger.getLogger(CustomerSubsystemFacade.class.getName());
 	ShoppingCartSubsystem shoppingCartSubsystem;
 	OrderSubsystem orderSubsystem;
 	List<Order> orderHistory;
@@ -72,32 +74,56 @@ public class CustomerSubsystemFacade implements CustomerSubsystem {
 			customerProfile = dbclass.readCustomerProfile(id);
 			customerProfile.setIsAdmin(isAdmin);
 		} catch (DatabaseException e) {
+			LOG.log(Level.SEVERE, "Database Exception occurred loading Customer Profile", e);
 			throw new BackendException(e);
 		}
 	}
 
 	void loadDefaultShipAddress() throws BackendException {
-		// implement
-		LOG.warning("Method CustomerSubsystemFacade.loadDefaultShipAddress has not been implemented.");
+		// implemented//Bandeshor 7/7/2016
+		CustomerProfile cProfile = CacheReader.readCustomer().getCustomerProfile();
+		DbClassAddress dbClassAddress = new DbClassAddress();
+		try {
+			defaultShipAddress = (AddressImpl) dbClassAddress.readDefaultShipAddress(cProfile);
+		} catch (DatabaseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new BackendException(e);
+		}
+		
 	}
 
 	void loadDefaultBillAddress() throws BackendException {
-		// implement
-		LOG.warning("Method CustomerSubsystemFacade.loadDefaultBillAddress has not been implemented.");
+		// implemented//Bandeshor 7/7/2016
+		CustomerProfile cProfile = CacheReader.readCustomer().getCustomerProfile();
+		DbClassAddress dbClassAddress = new DbClassAddress();
+		try {
+			defaultBillAddress = (AddressImpl) dbClassAddress.readDefaultBillAddress(cProfile);
+		} catch (DatabaseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new BackendException(e);
+			
+		}
 	}
 
 	void loadDefaultPaymentInfo() throws BackendException {
 		// implement
-		LOG.warning("Method CustomerSubsystemFacade.loadDefaultPaymentInfo has not been implemented.");
+		CustomerProfile cProfile = CacheReader.readCustomer().getCustomerProfile();
+		DbClassCreditCard dbCreditCard = new DbClassCreditCard();
+		try {
+			defaultPaymentInfo = dbCreditCard.readDefaultCreditCard(cProfile.getCustId());
+		} catch (DatabaseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new BackendException(e);
+		}
 	}
 
+	// retrieve the order history for the customer and store here
 	void loadOrderData() throws BackendException {
-		//implement
-		// retrieve the order history for the customer and store here
 		orderSubsystem = new OrderSubsystemFacade(customerProfile);
-		// orderHistory = orderSubsystem.getOrderHistory();
-		LOG.warning("Method CustomerSubsystemFacade.loadOrderData has not been implemented.");
-
+		orderHistory = orderSubsystem.getOrderHistory();//Bandeshor// 7/7/2016		
 	}
 
 	/**
@@ -146,6 +172,7 @@ public class CustomerSubsystemFacade implements CustomerSubsystem {
 			dbClass.setAddress(addr);
 			dbClass.saveAddress(customerProfile);
 		} catch (DatabaseException e) {
+			LOG.log(Level.SEVERE, "Database Exception occurred saving New Address", e);
 			throw new BackendException(e);
 		}
 	}
@@ -179,6 +206,7 @@ public class CustomerSubsystemFacade implements CustomerSubsystem {
 	    			   .filter(addr -> addr.isShippingAddress())
 	    			   .collect(Collectors.toList());
     	} catch(DatabaseException e) {
+    		LOG.log(Level.SEVERE, "Database Exception occurred getting All Ship Addresses", e);
 			throw new BackendException(e);
 		}
     }
@@ -195,6 +223,7 @@ public class CustomerSubsystemFacade implements CustomerSubsystem {
 	    			   .filter(addr -> addr.isBillingAddress())
 	    			   .collect(Collectors.toList());
     	} catch(DatabaseException e) {
+    		LOG.log(Level.SEVERE, "Database Exception occurred getting All Bill Addresses", e);
 			throw new BackendException(e);
 		}
     }
@@ -250,41 +279,73 @@ public class CustomerSubsystemFacade implements CustomerSubsystem {
 
 	}
 
-	
-	//added later
 	@Override
 	public void setShippingAddressInCart(Address addr) {
-		// TODO Auto-generated method stub
-		
+		//implemented//Bandeshor 7/8/2016
+		getShoppingCart().setShippingAddress(addr);
 	}
 
 	@Override
 	public void setBillingAddressInCart(Address addr) {
-		// TODO Auto-generated method stub
-		
+		//implemented//Bandeshor 7/8/2016
+		getShoppingCart().setBillingAddress(addr);
 	}
 
 	@Override
 	public void setPaymentInfoInCart(CreditCard cc) {
-		// TODO Auto-generated method stub
-		
+		//implemented//Bandeshor 7/8/2016
+		getShoppingCart().setPaymentInfo(cc);
 	}
 
 	@Override
 	public void submitOrder() throws BackendException {
 		// TODO Auto-generated method stub
+		//implement
+		orderSubsystem = new OrderSubsystemFacade(customerProfile);
+		orderSubsystem.submitOrder(getShoppingCart().getLiveCart());
 		
 	}
 
 	@Override
 	public void refreshAfterSubmit() throws BackendException {
 		// TODO Auto-generated method stub
+		//implemented//Bandeshor 7/9/2016
+		///DON"T KNOW WHAT TO DO HERE//Maybe empty the cart or something
+		getShoppingCart().deleteSavedCartAfterSubmit(customerProfile);
+		getShoppingCart().clearLiveCart();
+		BrowseSelectData.INSTANCE.getCartData().clear();
+		
+		//Sanjeev //7/12/2016
+		loadOrderData();
 		
 	}
 
 	@Override
 	public void saveShoppingCart() throws BackendException {
+		//implemented//Bandeshor 7/8/2016
+		getShoppingCart().saveLiveCart();
+	}
+
+	
+	//Bandeshor 7/9/2016
+	//For JUnitTest
+	@Override
+	public DbClassCustomerProfileForTest getGenericDbCustomerProfile() {
 		// TODO Auto-generated method stub
-		
+		return new DbClassCustomerProfile();
+	}
+
+	@Override
+	public List<Address> getAllShippingAddressForTest(CustomerProfile customerProfile) throws BackendException {
+		try {
+	    	DbClassAddress dbClass = new DbClassAddress();
+	    	List<Address> list = dbClass.readAllAddresses(customerProfile);
+	    	return list.stream()
+	    			   .filter(addr -> addr.isShippingAddress())
+	    			   .collect(Collectors.toList());
+    	} catch(DatabaseException e) {
+    		LOG.log(Level.SEVERE, "Database Exception occurred getting All Ship Addresses", e);
+			throw new BackendException(e);
+		}
 	}
 }

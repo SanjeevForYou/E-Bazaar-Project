@@ -1,5 +1,6 @@
 package presentation.control;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javafx.event.ActionEvent;
@@ -56,6 +57,7 @@ public class LoginUIControl {
     }
     
     public SubmitHandler getSubmitHandler(LoginWindow w) {
+    //	this.targetWindow = w.control
         return new SubmitHandler();
     }
     public CancelHandler getCancelHandler(LoginWindow w) {
@@ -93,8 +95,7 @@ public class LoginUIControl {
     }
     
 	class SubmitHandler implements EventHandler<ActionEvent> {
-		
-        public void handle(ActionEvent evt) {
+		public void handle(ActionEvent evt) {
             loginWindow.hide();
             Login login = loginData.extractLogin(loginWindow);
             LOG.config("Login found: " + login.getCustId());
@@ -104,9 +105,11 @@ public class LoginUIControl {
             	loginSuccessful = true;
             	loginData.loadCustomer(login, authorizationLevel);
             } catch(UserException e) {
+            	LOG.log(Level.SEVERE, "User Exception authentificating User", e);
             	loginWindow.displayError(e.getMessage());
             	loginWindow.show();
             } catch(BackendException e) {
+            	LOG.log(Level.SEVERE, "Backend Exception loading customer", e);
             	loginWindow.displayError(e.getMessage());
             	loginWindow.show();
             }

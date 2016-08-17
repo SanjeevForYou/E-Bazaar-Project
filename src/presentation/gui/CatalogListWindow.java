@@ -38,9 +38,9 @@ public class CatalogListWindow extends Stage implements MessageableWindow, Modif
 	}
 	//useful if window is known to be populated
 	public static CatalogListWindow getInstance() {
-		if(instance == null) {
-			throw new RuntimeException("This window has not been populated.");
-		}
+//		if(instance == null) {
+//			throw new RuntimeException("This window has not been populated.");
+//		}
 		return instance;
 	}
 	

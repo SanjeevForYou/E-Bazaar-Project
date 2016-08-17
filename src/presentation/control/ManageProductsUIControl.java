@@ -13,8 +13,11 @@ import presentation.util.TableUtil;
 import business.exceptions.BackendException;
 import business.exceptions.UnauthorizedException;
 import business.externalinterfaces.Catalog;
+import business.externalinterfaces.Product;
+import business.productsubsystem.ProductImpl;
 import business.productsubsystem.ProductSubsystemFacade;
 import business.usecasecontrol.ManageProductsController;
+import business.util.Convert;
 import business.util.DataUtil;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -22,6 +25,9 @@ import javafx.event.EventHandler;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.*;
 
 
@@ -57,12 +63,12 @@ public enum ManageProductsUIControl {
 				Authorization.checkAuthorization(maintainCatalogsWindow, CacheReader.custIsAdmin());
 				//show this screen if user is authorized
 				maintainCatalogsWindow.show();
-			} catch(UnauthorizedException ex) {   
+			} catch(UnauthorizedException ex) {
+				LOG.log(Level.WARNING, "Unauthorize Exception maintaing Catalog", e);
             	startScreenCallback.displayError(ex.getMessage());
             	maintainCatalogsWindow.hide();
             	primaryStage.show();           	
             }
-
 		}
 	}
 	
@@ -124,16 +130,27 @@ public enum ManageProductsUIControl {
 		    ObservableList<Integer> selectedIndices = table.getSelectionModel().getSelectedIndices();
 		    ObservableList<CatalogPres> selectedItems = table.getSelectionModel()
 					.getSelectedItems();
+		    List<CatalogPres> selectTempCatalogPres = new ArrayList<>(selectedItems);
+		    for(CatalogPres cPres:selectedItems){
+		    	selectTempCatalogPres.add(cPres);
+    		}
 		    if(tableItems.isEmpty()) {
 		    	maintainCatalogsWindow.displayError("Nothing to delete!");
 		    } else if (selectedIndices == null || selectedIndices.isEmpty()) {
 		    	maintainCatalogsWindow.displayError("Please select a row.");
 		    } else {
+		    	try {
+		    		for(CatalogPres cPres:selectTempCatalogPres)
+		    			controller.deleteCatalog(cPres.getCatalog());
+				} catch (BackendException e) {
+					e.printStackTrace();
+					LOG.log(Level.SEVERE, "Backend Exception deleting a Product to DB", e);
+				}
 		    	boolean result =  ManageProductsData.INSTANCE.removeFromCatalogList(selectedItems);
 			    if(result) {
 			    	table.setItems(ManageProductsData.INSTANCE.getCatalogList());
-			    	maintainCatalogsWindow.displayError(
-			    		"Selected catalog still needs to be deleted from database!");  	
+			    	//maintainCatalogsWindow.displayError(
+			    		//"Selected catalog still needs to be deleted from database!");  	
 			    } else {
 			    	maintainCatalogsWindow.displayInfo("No items deleted.");
 			    }
@@ -175,20 +192,17 @@ public enum ManageProductsUIControl {
 					addCatalogPopup.clearMessages();
 					addCatalogPopup.hide();
 				} catch(BackendException e) {
+					LOG.log(Level.SEVERE, "Backend Exception adding New Catalog to DB", e);
 					addCatalogPopup.displayError("A database error has occurred. Check logs and try again later.");
 				}
 			}	
 		}
-		
 	}
+	
 	public AddNewCatalogHandler getAddNewCatalogHandler() {
 		return new AddNewCatalogHandler();
 	} 
 
-	
-//////new
-	
-	
 	/* Handles the request to delete selected row in catalogs table */
 	private class DeleteProductHandler implements EventHandler<ActionEvent> {
 		public void handle(ActionEvent evt) {
@@ -197,17 +211,29 @@ public enum ManageProductsUIControl {
 			TableView<ProductPres> table = maintainProductsWindow.getTable();
 			ObservableList<Integer> selectedIndices = table.getSelectionModel().getSelectedIndices();
 		    ObservableList<ProductPres> selectedItems = table.getSelectionModel().getSelectedItems();
+		    List<ProductPres> selectTempProductPres = new ArrayList<>(selectedItems);
+		    for(ProductPres pPres:selectedItems){
+		    	selectTempProductPres.add(pPres);
+    		}
 		    if(tableItems.isEmpty()) {
 		    	maintainProductsWindow.displayError("Nothing to delete!");
 		    } else if (selectedIndices == null || selectedIndices.isEmpty()) {
 		    	maintainProductsWindow.displayError("Please select a row.");
 		    } else {
+		    	try {
+		    		for(ProductPres pPres:selectTempProductPres)
+		    			controller.deleteProduct(pPres.getProduct());
+				} catch (BackendException e) {
+					e.printStackTrace();
+					LOG.log(Level.SEVERE, "Backend Exception deleting a Product to DB", e);
+				}
 		    	boolean result 
 		    	    =  ManageProductsData.INSTANCE.removeFromProductList(selectedCatalog, selectedItems);
 			    if(result) {
 			    	table.setItems(ManageProductsData.INSTANCE.getProductsList(selectedCatalog));
-			    	maintainProductsWindow.displayError(
-			    		"Product still needs to be deleted from db!");
+			    	TableUtil.refreshTable(maintainProductsWindow.getTable(), 
+							ManageProductsData.INSTANCE.getManageProductsSynchronizer());
+			    	//maintainProductsWindow.displayError("Product still needs to be deleted from db!");
 			    } else {
 			    	maintainProductsWindow.displayInfo("No items deleted.");
 			    }
@@ -237,20 +263,54 @@ public enum ManageProductsUIControl {
 	/* Invoked by AddCatalogPopup - reads user input for a new catalog to be added to db */
 	private class AddNewProductHandler implements EventHandler<ActionEvent> {
 		public void handle(ActionEvent evt) {
+			String name = addProductPopup.getName().getText();
+			String date = addProductPopup.getManufactureDate().getText();
+			Integer numAvail = Integer.parseInt(addProductPopup.getNumAvail().getText());
+			Double price = Double.parseDouble(addProductPopup.getUnitPrice().getText());
+			String description = addProductPopup.getDescription().getText();
 			//validate input (better to implement in rules engine
-			if(addProductPopup.getName().getText().trim().equals("")) 
+			if(name.trim().equals("")) 
 				addProductPopup.displayError("Product Name field must be nonempty!");
-			else if(addProductPopup.getManufactureDate().getText().trim().equals("")) 
+			else if(date.trim().equals("")) 
 				addProductPopup.displayError("Manufacture Date field must be nonempty!");
-			else if(addProductPopup.getNumAvail().getText().trim().equals("")) 
+			else if(!date.matches("\\d{4}-\\d{2}-\\d{2}"))
+				addProductPopup.displayError("Please use correct Manufacture Date format (mm/dd/yyyy)");
+			else if(numAvail.equals("")) 
 				addProductPopup.displayError("Number in Stock field must be nonempty!");
-			else if(addProductPopup.getUnitPrice().getText().trim().equals("")) 
+			else if(price.equals("")) 
 				addProductPopup.displayError("Unit Price field must be nonempty!");
-			else if(addProductPopup.getDescription().getText().trim().equals("")) 
+			else if(description.trim().equals("")) 
 				addProductPopup.displayError("Description field must be nonempty!");
 			else {
 				//code this as in AddNewCatalogHandler (above)
-				addProductPopup.displayInfo("You need to implement this!");
+				Catalog selectedCatalog = ManageProductsData.INSTANCE.getSelectedCatalog().getCatalog();
+				Product prod = ManageProductsData.INSTANCE.productPresFromData(selectedCatalog, name, date, numAvail, price).getProduct();
+				CatalogPres catPres = ManageProductsData.INSTANCE.catalogPresFromData(selectedCatalog.getId(), selectedCatalog.getName());
+				try {
+					int newProdId = controller.saveNewProduct(prod, selectedCatalog);
+					
+					prod = new ProductImpl(selectedCatalog, newProdId,
+							name,
+							numAvail,
+							price,
+							Convert.localDateForString(date),
+							description);
+					ProductPres prodPres = new ProductPres();
+					prodPres.setProduct(prod);
+					
+					ManageProductsData.INSTANCE.addToProdList(catPres, prodPres);
+					maintainProductsWindow.setData(ManageProductsData.INSTANCE.getProductsList(catPres));
+					TableUtil.refreshTable(maintainProductsWindow.getTable(),
+							ManageProductsData.INSTANCE.getManageProductsSynchronizer());
+					addProductPopup.clearMessages();
+					addProductPopup.hide();
+				} catch (BackendException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					LOG.log(Level.SEVERE, "Backend Exception adding New Product to DB", e);
+					addProductPopup.displayError("A database error has occurred. Check logs and try again later.");
+				}
+				//addProductPopup.displayInfo("You need to implement this!");
 			}	
 		}
 		

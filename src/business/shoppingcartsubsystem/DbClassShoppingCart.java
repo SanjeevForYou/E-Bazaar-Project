@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import middleware.DbConfigProperties;
@@ -22,10 +23,11 @@ import business.externalinterfaces.Address;
 import business.externalinterfaces.CartItem;
 import business.externalinterfaces.CreditCard;
 import business.externalinterfaces.CustomerProfile;
+import business.externalinterfaces.DbClassShoppingCartForTest;
 import business.externalinterfaces.ShoppingCart;
 
 
-public class DbClassShoppingCart implements DbClass {
+public class DbClassShoppingCart implements DbClass, DbClassShoppingCartForTest {
 	enum Type {GET_ID, GET_SAVED_ITEMS, GET_TOP_LEVEL_SAVED_CART,
 		SAVE_CART, SAVE_CART_ITEM, DELETE_CART, DELETE_ALL_CART_ITEMS};
 	
@@ -42,7 +44,7 @@ public class DbClassShoppingCart implements DbClass {
     		"billaddress2, billcity, billstate, billzipcode, nameoncard, " +
     		"expdate,cardtype, cardnum, totalpriceamount, totalshipmentcost, "+ 
     		"totaltaxamount, totalamountcharged) " +
-    		"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    		"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 	private String getTopLevelSavedCartQuery = "SELECT * FROM shopcarttbl WHERE shopcartid = ?";
 			//param is cartId 
 	private String getSavedItemsQuery  = "SELECT * FROM shopcartitem WHERE shopcartid = ?";
@@ -112,7 +114,7 @@ public class DbClassShoppingCart implements DbClass {
     }
    
     //Support method for saveCart -- part of another transaction started within saveCart
-    private void deleteCart(Integer cartId) throws DatabaseException {
+    void deleteCart(Integer cartId) throws DatabaseException {
     	queryType = Type.DELETE_CART;
     	deleteCartParams = new Object[]{cartId};
     	deleteCartTypes = new int[]{Types.INTEGER};
@@ -128,7 +130,8 @@ public class DbClassShoppingCart implements DbClass {
     }
     
      //support method for saveCart and also for retrieveSavedCart; part of another transaction
-    private Integer getShoppingCartId(CustomerProfile custProfile) throws DatabaseException {
+    Integer getShoppingCartId(CustomerProfile custProfile) throws DatabaseException {
+    	
         queryType = Type.GET_ID;
         getIdParams = new Object[]{custProfile.getCustId()};
         getIdTypes = new int[]{Types.INTEGER};
@@ -145,13 +148,13 @@ public class DbClassShoppingCart implements DbClass {
     	  cart.getBillingAddress().getStreet(), cart.getBillingAddress().getCity(), cart.getBillingAddress().getState(),
     	  cart.getBillingAddress().getZip(), cart.getPaymentInfo().getNameOnCard(), cart.getPaymentInfo().getExpirationDate(),
     	  cart.getPaymentInfo().getCardType(), cart.getPaymentInfo().getCardNum(), cart.getTotalPrice(),
-    	  0.00, 0.00, cart.getTotalPrice()};
+    	  0.00, 0.00, cart.getTotalPrice(), 0.00, 0.00};
     	saveCartTypes = new int[]{Types.INTEGER, Types.VARCHAR, 
     			Types.VARCHAR,Types.VARCHAR,Types.VARCHAR,
     			Types.VARCHAR,Types.VARCHAR,Types.VARCHAR,
     			Types.VARCHAR,Types.VARCHAR,Types.VARCHAR,
     			Types.VARCHAR,Types.VARCHAR,Types.DOUBLE,
-    			Types.DOUBLE,Types.DOUBLE,Types.DOUBLE};	
+    			Types.DOUBLE,Types.DOUBLE,Types.DOUBLE, Types.DOUBLE,Types.DOUBLE};	
     	return dataAccessSS.insert();
     }
     
@@ -228,6 +231,7 @@ public class DbClassShoppingCart implements DbClass {
 	        	try {
 	        		populateCartItemsList(resultSet);
 	        	} catch(BackendException e) {
+	        		LOG.log(Level.SEVERE, "Database Exception occurred populating Entity", e);
 	        		throw new DatabaseException(e);
 	        	}
 	        	break;
@@ -291,6 +295,7 @@ public class DbClassShoppingCart implements DbClass {
     		}
     	}
     	catch(SQLException e){
+    		LOG.log(Level.SEVERE, "Database Exception occurred populating Top Level Chart", e);
             throw new DatabaseException(e);
         } 
     	
@@ -311,6 +316,7 @@ public class DbClassShoppingCart implements DbClass {
             }
         }
         catch(SQLException e){
+        	LOG.log(Level.SEVERE, "Database Exception occurred populating Cart Items List", e);
             throw new BackendException(e);
         }       
     }
@@ -386,6 +392,36 @@ public class DbClassShoppingCart implements DbClass {
         	LOG.warning("Method getParamTypes() unexpectedly returning null");
         	return null;	
         }
+    }
+
+    @Override
+	public Integer saveLiveCart(CustomerProfile custProfile, ShoppingCart liveCart) throws DatabaseException {
+		// TODO Auto-generated method stub
+		//saveCart(custProfile, liveCart);
+		this.cart = liveCart;
+		
+		dataAccessSS.establishConnection(this);
+		dataAccessSS.startTransaction();
+		Integer cartId = saveCartTopLevel(custProfile);
+		dataAccessSS.commit();
+		dataAccessSS.releaseConnection();
+		
+		return cartId;
+	}
+    
+    
+    //Bereket //7/12/2016
+    //Method to delete the cart Items
+    void deleteCartAfterSubmissions(CustomerProfile cusProfile) throws DatabaseException{
+    	dataAccessSS.establishConnection(this);
+	    dataAccessSS.startTransaction();
+    	Integer oldCartId = getShoppingCartId(cusProfile);
+    	//First, delete old cart in two steps
+    	if(oldCartId != null) {
+    		deleteCart(oldCartId);
+    		deleteAllCartItems(oldCartId);
+    	}
+    	dataAccessSS.releaseConnection();
     }
     
 }
